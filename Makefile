@@ -16,6 +16,7 @@ MODULES = jailed
 endif
 PACKAGE_NAME = YTLitePlus
 PACKAGE_VERSION = X.X.X-X.X
+SAFE_MODE ?= 1
 
 INSTALL_TARGET_PROCESSES = YouTube
 TWEAK_NAME = YTLitePlus
@@ -24,7 +25,12 @@ BUNDLE_ID = com.google.ios.youtube
 
 YTLitePlus_FILES = YTLitePlus.xm $(shell find Source -name '*.xm' -o -name '*.x' -o -name '*.m')
 YTLitePlus_FRAMEWORKS = UIKit Security
-YTLitePlus_INJECT_DYLIBS = Tweaks/YTLite/var/jb/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib .theos/obj/libFLEX.dylib .theos/obj/YTUHD.dylib .theos/obj/YouPiP.dylib .theos/obj/YTABConfig.dylib .theos/obj/DontEatMyContent.dylib .theos/obj/YTVideoOverlay.dylib .theos/obj/YouTimeStamp.dylib .theos/obj/YouGroupSettings.dylib
+YTLITEPLUS_CORE_DYLIBS = Tweaks/YTLite/var/jb/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib .theos/obj/libFLEX.dylib .theos/obj/YTABConfig.dylib
+YTLITEPLUS_OPTIONAL_DYLIBS = .theos/obj/YTUHD.dylib .theos/obj/YouPiP.dylib .theos/obj/DontEatMyContent.dylib .theos/obj/YTVideoOverlay.dylib .theos/obj/YouTimeStamp.dylib .theos/obj/YouGroupSettings.dylib
+YTLitePlus_INJECT_DYLIBS = $(YTLITEPLUS_CORE_DYLIBS)
+ifneq ($(SAFE_MODE),1)
+YTLitePlus_INJECT_DYLIBS += $(YTLITEPLUS_OPTIONAL_DYLIBS)
+endif
 YTLitePlus_EMBED_LIBRARIES = $(THEOS_OBJ_DIR)/libcolorpicker.dylib
 YTLitePlus_EMBED_FRAMEWORKS = $(_THEOS_LOCAL_DATA_DIR)/$(THEOS_OBJ_DIR_NAME)/install_Alderis.xcarchive/Products/var/jb/Library/Frameworks/Alderis.framework
 YTLitePlus_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-but-set-variable -DTWEAK_VERSION=\"$(PACKAGE_VERSION)\"
