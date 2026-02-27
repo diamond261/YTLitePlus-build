@@ -21,6 +21,29 @@ static void ytlpUncaughtExceptionHandler(NSException *exception) {
     YTLPLog(@"Call stack: %@", exception.callStackSymbols);
 }
 
+static void applyDebugAllFeaturesOffPreset(void) {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if ([defaults boolForKey:@"YTLPDebugAllFeaturesOffApplied"]) {
+        return;
+    }
+
+    NSDictionary<NSString *, id> *snapshot = [defaults dictionaryRepresentation];
+    NSInteger disabledCount = 0;
+    for (NSString *key in snapshot.allKeys) {
+        if ([key hasSuffix:@"_enabled"]) {
+            [defaults setBool:NO forKey:key];
+            disabledCount++;
+        }
+    }
+
+    [defaults setBool:NO forKey:@"RYD-ENABLED"];
+    [defaults setBool:NO forKey:@"YouPiPEnabled"];
+    [defaults setBool:YES forKey:@"newSettingsUI_enabled"];
+    [defaults setBool:YES forKey:@"YTLPDebugAllFeaturesOffApplied"];
+    [defaults synchronize];
+    YTLPLog(@"Debug preset applied: disabled %ld *_enabled keys", (long)disabledCount);
+}
+
 static BOOL isYouTubeVersionNewerThan(NSString *targetVersion) {
     NSString *currentVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
     if (currentVersion.length == 0 || targetVersion.length == 0) {
@@ -1249,6 +1272,11 @@ NSInteger pageStyle = 0;
     NSSetUncaughtExceptionHandler(&ytlpUncaughtExceptionHandler);
     NSString *ytVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
     YTLPLog(@"ctor start (YouTube %@)", ytVersion ?: @"unknown");
+#if YTLP_DISABLE_HOOKS
+    YTLPLog(@"DISABLE_ALL_FEATURES enabled: skipping all hooks and injected dylibs");
+    YTLPLog(@"ctor end (minimal mode)");
+    return;
+#endif
     %init;
     BOOL skipExternalDylibs = isYouTubeVersionNewerThan(@"21.08.3");
     YTLPLog(@"skipExternalDylibs=%@", skipExternalDylibs ? @"YES" : @"NO");
@@ -1256,6 +1284,10 @@ NSInteger pageStyle = 0;
         loadEmbeddedDylib(@"YouGroupSettings.dylib");
         loadEmbeddedDylib(@"YTLite.dylib");
     }
+
+#if YTLP_DEBUG_ALL_OFF
+    applyDebugAllFeaturesOffPreset();
+#endif
 
 #if YTLP_SAFE_MODE
     YTLPLog(@"SAFE_MODE enabled: skipping optional hook groups");
