@@ -56,15 +56,19 @@ static const NSInteger YTLitePlusSection = 788;
 static const NSInteger YTLiteSection = 789;
 %hook YTSettingsGroupData
 + (NSMutableArray <NSNumber *> *)tweaks {
-    NSMutableArray <NSNumber *> *originalTweaks = %orig;
+    NSArray<NSNumber *> *originalTweaks = %orig;
+    NSMutableArray<NSNumber *> *mutableTweaks = [originalTweaks mutableCopy] ?: [NSMutableArray array];
 
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        [originalTweaks addObject:@(YTLitePlusSection)];
-        [originalTweaks addObject:@(YTLiteSection)];
-    });
+    NSNumber *ytLitePlusSectionNumber = @(YTLitePlusSection);
+    NSNumber *ytLiteSectionNumber = @(YTLiteSection);
+    if (![mutableTweaks containsObject:ytLitePlusSectionNumber]) {
+        [mutableTweaks addObject:ytLitePlusSectionNumber];
+    }
+    if (![mutableTweaks containsObject:ytLiteSectionNumber]) {
+        [mutableTweaks addObject:ytLiteSectionNumber];
+    }
 
-    return originalTweaks;
+    return mutableTweaks;
 }
 %end
 
