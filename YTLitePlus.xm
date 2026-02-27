@@ -1,5 +1,7 @@
 #import "YTLitePlus.h"
 
+#define YTLPLog(fmt, ...) NSLog(@"[YTLitePlus] " fmt, ##__VA_ARGS__)
+
 NSBundle *YTLitePlusBundle() {
     static NSBundle *bundle = nil;
     static dispatch_once_t onceToken;
@@ -14,6 +16,11 @@ NSBundle *YTLitePlusBundle() {
 }
 NSBundle *tweakBundle = YTLitePlusBundle();
 
+static void ytlpUncaughtExceptionHandler(NSException *exception) {
+    YTLPLog(@"Uncaught exception: %@ | reason: %@", exception.name, exception.reason);
+    YTLPLog(@"Call stack: %@", exception.callStackSymbols);
+}
+
 static BOOL isYouTubeVersionNewerThan(NSString *targetVersion) {
     NSString *currentVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
     if (currentVersion.length == 0 || targetVersion.length == 0) {
@@ -25,9 +32,17 @@ static BOOL isYouTubeVersionNewerThan(NSString *targetVersion) {
 static void loadEmbeddedDylib(NSString *name) {
     NSString *path = [NSString stringWithFormat:@"%@/Frameworks/%@", [[NSBundle mainBundle] bundlePath], name];
     if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        YTLPLog(@"Skipped missing dylib: %@", name);
         return;
     }
-    dlopen(path.UTF8String, RTLD_LAZY);
+    dlerror();
+    void *handle = dlopen(path.UTF8String, RTLD_LAZY);
+    const char *error = dlerror();
+    if (handle == NULL || error != NULL) {
+        YTLPLog(@"Failed to load %@: %s", name, error ? error : "unknown error");
+        return;
+    }
+    YTLPLog(@"Loaded dylib: %@", name);
 }
 
 // Keychain fix
@@ -1231,12 +1246,22 @@ NSInteger pageStyle = 0;
 
 # pragma mark - ctor
 %ctor {
+    NSSetUncaughtExceptionHandler(&ytlpUncaughtExceptionHandler);
+    NSString *ytVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    YTLPLog(@"ctor start (YouTube %@)", ytVersion ?: @"unknown");
     %init;
     BOOL skipExternalDylibs = isYouTubeVersionNewerThan(@"21.08.3");
+    YTLPLog(@"skipExternalDylibs=%@", skipExternalDylibs ? @"YES" : @"NO");
     if (!skipExternalDylibs) {
         loadEmbeddedDylib(@"YouGroupSettings.dylib");
         loadEmbeddedDylib(@"YTLite.dylib");
     }
+
+#if YTLP_SAFE_MODE
+    YTLPLog(@"SAFE_MODE enabled: skipping optional hook groups");
+    YTLPLog(@"ctor end (safe mode)");
+    return;
+#endif
 
     if (IsEnabled(@"hideCastButton_enabled")) {
         %init(gHideCastButton);
@@ -1329,4 +1354,5 @@ NSInteger pageStyle = 0;
         [[NSUserDefaults standardUserDefaults] setFloat:1.0 forKey:@"playerGesturesSensitivity"]; 
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"playerGesturesHapticFeedback_enabled"]; 
     }
+    YTLPLog(@"ctor end");
 }

@@ -34,6 +34,7 @@ endif
 YTLitePlus_EMBED_LIBRARIES = $(THEOS_OBJ_DIR)/libcolorpicker.dylib
 YTLitePlus_EMBED_FRAMEWORKS = $(_THEOS_LOCAL_DATA_DIR)/$(THEOS_OBJ_DIR_NAME)/install_Alderis.xcarchive/Products/var/jb/Library/Frameworks/Alderis.framework
 YTLitePlus_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-but-set-variable -DTWEAK_VERSION=\"$(PACKAGE_VERSION)\"
+YTLitePlus_CFLAGS += -DYTLP_SAFE_MODE=$(SAFE_MODE)
 YTLitePlus_EMBED_BUNDLES = $(wildcard Bundles/*.bundle)
 YTLitePlus_EMBED_EXTENSIONS = $(wildcard Extensions/*.appex)
 YTLitePlus_IPA = ./tmp/Payload/YouTube.app
