@@ -14,6 +14,22 @@ NSBundle *YTLitePlusBundle() {
 }
 NSBundle *tweakBundle = YTLitePlusBundle();
 
+static BOOL isYouTubeVersionNewerThan(NSString *targetVersion) {
+    NSString *currentVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    if (currentVersion.length == 0 || targetVersion.length == 0) {
+        return NO;
+    }
+    return [currentVersion compare:targetVersion options:NSNumericSearch] == NSOrderedDescending;
+}
+
+static void loadEmbeddedDylib(NSString *name) {
+    NSString *path = [NSString stringWithFormat:@"%@/Frameworks/%@", [[NSBundle mainBundle] bundlePath], name];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        return;
+    }
+    dlopen(path.UTF8String, RTLD_LAZY);
+}
+
 // Keychain fix
 static NSString *accessGroupID() {
     NSDictionary *query = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -1216,10 +1232,11 @@ NSInteger pageStyle = 0;
 # pragma mark - ctor
 %ctor {
     %init;
-    // Access YouGroupSettings methods
-    dlopen([[NSString stringWithFormat:@"%@/Frameworks/YouGroupSettings.dylib", [[NSBundle mainBundle] bundlePath]] UTF8String], RTLD_LAZY);
-    // Access YouTube Plus methods
-    dlopen([[NSString stringWithFormat:@"%@/Frameworks/YTLite.dylib",           [[NSBundle mainBundle] bundlePath]] UTF8String], RTLD_LAZY);
+    BOOL skipExternalDylibs = isYouTubeVersionNewerThan(@"21.08.3");
+    if (!skipExternalDylibs) {
+        loadEmbeddedDylib(@"YouGroupSettings.dylib");
+        loadEmbeddedDylib(@"YTLite.dylib");
+    }
 
     if (IsEnabled(@"hideCastButton_enabled")) {
         %init(gHideCastButton);
